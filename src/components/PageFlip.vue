@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import { useReaderStore } from '../stores/useReaderStore'
-import { useBookStore } from '../stores/bookStore'
-import type { PinnedPage } from '../types'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
 interface PageFlipProps {
   currentPage: number
@@ -16,12 +13,9 @@ const props = withDefaults(defineProps<PageFlipProps>(), {
 
 const emit = defineEmits<{
   'page-change': [page: number]
-  'flip-start': []
+  'flip-start': [direction: 'left' | 'right']
   'flip-end': []
 }>()
-
-const readerStore = useReaderStore()
-const bookStore = useBookStore()
 
 const isFlipping = ref(false)
 const flipDirection = ref<'left' | 'right' | null>(null)
@@ -69,7 +63,7 @@ async function flipPage(direction: 'left' | 'right') {
     ? currentPageData.value.right 
     : currentPageData.value.left
 
-  emit('flip-start')
+  emit('flip-start', direction)
 
   const startTime = performance.now()
 
@@ -96,7 +90,6 @@ async function flipPage(direction: 'left' | 'right') {
 
   if (newPage !== props.currentPage) {
     emit('page-change', newPage)
-    bookStore.updateCurrentPage(newPage)
   }
 
   isFlipping.value = false

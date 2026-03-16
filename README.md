@@ -2,6 +2,11 @@
 
 A desktop PDF reader optimized for scanned PDFs with realistic page-turning experience.
 
+## 📌 Project Docs
+
+- English architecture: `ARCHITECTURE.md`
+- 中文项目方案与架构：`PROJECT_OVERVIEW_ZH.md`
+
 ## 📚 Library Module Features
 
 ### Implemented
@@ -41,12 +46,19 @@ A desktop PDF reader optimized for scanned PDFs with realistic page-turning expe
 
 ### Prerequisites
 
-1. **Install Rust** (if not already installed)
+1. **Use Node.js 20 LTS (required)**
+```bash
+# with nvm
+nvm use
+# or install the exact version from .nvmrc/.node-version (20.19.0)
+```
+
+2. **Install Rust** (if not already installed)
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-2. **Install System Dependencies** (Linux)
+3. **Install System Dependencies** (Linux)
 ```bash
 # Ubuntu/Debian
 sudo apt-get install -y \
@@ -79,7 +91,7 @@ sudo pacman -S --needed \
   librsvg
 ```
 
-3. **Install Node.js Dependencies**
+4. **Install Node.js Dependencies**
 ```bash
 cd mimic-reader
 npm install

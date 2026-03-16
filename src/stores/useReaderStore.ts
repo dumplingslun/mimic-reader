@@ -16,6 +16,7 @@ export const useReaderStore = defineStore('reader', () => {
   
   const isPrefetching = ref(false)
   const prefetchedThumbnails = ref<Map<number, string>>(new Map())
+  const PREFETCH_WINDOW_RADIUS = 4
   const isRapidScanMode = ref(false)
   const rapidScanCurrentPage = ref(1)
   const isRestoring = ref(false)
@@ -107,8 +108,25 @@ export const useReaderStore = defineStore('reader', () => {
     prefetchedThumbnails.value.set(pageNumber, thumbnail)
   }
 
+  function cacheThumbnails(thumbnails: Map<number, string>) {
+    thumbnails.forEach((thumbnail, pageNumber) => {
+      prefetchedThumbnails.value.set(pageNumber, thumbnail)
+    })
+  }
+
   function getCachedThumbnail(pageNumber: number): string | undefined {
     return prefetchedThumbnails.value.get(pageNumber)
+  }
+
+  function prunePrefetchCache(centerPage: number, radius = PREFETCH_WINDOW_RADIUS) {
+    const min = Math.max(1, centerPage - radius)
+    const max = centerPage + radius
+
+    prefetchedThumbnails.value.forEach((_, pageNumber) => {
+      if (pageNumber < min || pageNumber > max) {
+        prefetchedThumbnails.value.delete(pageNumber)
+      }
+    })
   }
 
   function clearPrefetchCache() {
@@ -254,6 +272,8 @@ export const useReaderStore = defineStore('reader', () => {
     setPrefetchingState,
     cacheThumbnail,
     getCachedThumbnail,
+    cacheThumbnails,
+    prunePrefetchCache,
     clearPrefetchCache,
     enableRapidScanMode,
     disableRapidScanMode,
