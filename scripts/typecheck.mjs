@@ -1,22 +1,5 @@
 import { spawnSync } from 'node:child_process'
 
-function emitCompatWarning() {
-  const major = Number.parseInt(process.versions.node.split('.')[0] || '0', 10)
-
-  if (major >= 22) {
-    console.warn(
-      '\n[compat] Detected Node.js >= 22; this project is pinned to Node 20 LTS (.nvmrc).\n' +
-      '[compat] Switch environment with `nvm use` for strict typecheck, current run will skip typecheck for compatibility.\n'
-    )
-    return
-  }
-
-  console.warn(
-    '\n[compat] vue-tsc is incompatible with the current Node.js/TypeScript runtime. ' +
-    'Typecheck is skipped to keep build compatibility.\n'
-  )
-}
-
 const result = spawnSync('vue-tsc', ['--noEmit'], {
   stdio: 'pipe',
   encoding: 'utf8',
@@ -35,7 +18,7 @@ process.stdout.write(stdout)
 process.stderr.write(stderr)
 
 if (stderr.includes('supportedTSExtensions')) {
-  emitCompatWarning()
+  console.warn('\n[compat] vue-tsc is incompatible with the current Node.js/TypeScript runtime. Typecheck is skipped to keep build compatibility.\n')
   process.exit(0)
 }
 
