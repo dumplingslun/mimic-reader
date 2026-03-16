@@ -2,6 +2,11 @@
 
 A desktop PDF reader optimized for scanned PDFs with realistic page-turning experience.
 
+## 📌 Project Docs
+
+- English architecture: `ARCHITECTURE.md`
+- 中文项目方案与架构：`PROJECT_OVERVIEW_ZH.md`
+
 ## 📚 Library Module Features
 
 ### Implemented
