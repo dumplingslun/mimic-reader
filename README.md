@@ -2,6 +2,11 @@
 
 A desktop PDF reader optimized for scanned PDFs with realistic page-turning experience.
 
+## 📌 Project Docs
+
+- English architecture: `ARCHITECTURE.md`
+- 中文项目方案与架构：`PROJECT_OVERVIEW_ZH.md`
+
 ## 📚 Library Module Features
 
 ### Implemented
@@ -41,12 +46,19 @@ A desktop PDF reader optimized for scanned PDFs with realistic page-turning expe
 
 ### Prerequisites
 
-1. **Install Rust** (if not already installed)
+1. **Use Node.js 20 LTS (required)**
+```bash
+# with nvm
+nvm use
+# or install the exact version from .nvmrc/.node-version (20.19.0)
+```
+
+2. **Install Rust** (if not already installed)
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-2. **Install System Dependencies** (Linux)
+3. **Install System Dependencies** (Linux)
 ```bash
 # Ubuntu/Debian
 sudo apt-get install -y \
@@ -70,16 +82,24 @@ sudo dnf install -y \
   librsvg2-devel
 
 # Arch Linux
+# 推荐（Tauri v2 / 新环境）
 sudo pacman -S --needed \
-  webkit2gtk \
+  base-devel \
+  glib2 \
+  pkgconf \
+  webkit2gtk-4.1 \
   gtk3 \
-  javascriptcoregtk-4.0 \
-  libsoup2.4 \
-  libappindicator-gtk3 \
+  libsoup3 \
+  cairo \
+  pango \
+  gdk-pixbuf2 \
   librsvg
+
+# 兼容老依赖名称（如果你的环境仍使用 4.0 / libsoup2）
+# sudo pacman -S --needed webkit2gtk gtk3 javascriptcoregtk-4.0 libsoup2.4
 ```
 
-3. **Install Node.js Dependencies**
+4. **Install Node.js Dependencies**
 ```bash
 cd mimic-reader
 npm install
