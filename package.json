@@ -4,7 +4,7 @@
   "description": "A PDF e-book library and reader optimized for scanned PDFs with realistic page-turning experience",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
+    "build": "node scripts/typecheck.mjs && vite build",
     "preview": "vite preview",
     "tauri": "tauri"
   },
