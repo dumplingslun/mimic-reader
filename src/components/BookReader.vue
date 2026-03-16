@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useBookStore } from '../stores/bookStore'
 import { useReaderStore } from '../stores/useReaderStore'
-import { loadPDFDocument, renderPageToCanvas, renderPageAsImage } from '../utils/pdf'
+import { loadPDFDocument, renderPageToCanvas, renderPageAsImage, prefetchNearbyPages } from '../utils/pdf'
 import type { PinnedPage } from '../types'
 import PageFlip from './PageFlip.vue'
 
 const bookStore = useBookStore()
 const readerStore = useReaderStore()
-const canvasRef = ref<HTMLCanvasElement | null>(null)
 const leftCanvasRef = ref<HTMLCanvasElement | null>(null)
 const rightCanvasRef = ref<HTMLCanvasElement | null>(null)
 const pageFlipRef = ref<InstanceType<typeof PageFlip> | null>(null)
@@ -16,8 +15,6 @@ const pageFlipRef = ref<InstanceType<typeof PageFlip> | null>(null)
 const pdfDoc = ref<any>(null)
 const currentPage = ref(1)
 const isFlipping = ref(false)
-const flipProgress = ref(0)
-
 const isSpringBack = ref(false)
 let thumbnailWorker: Worker | null = null
 
@@ -28,6 +25,12 @@ const currentPageData = computed(() => ({
   right: currentPage.value + 1
 }))
 
+const flipBackImage = ref<string | null>(null)
+
+function getPagePreview(pageNumber: number): string | null {
+  return readerStore.getCachedThumbnail(pageNumber) ?? null
+}
+
 async function loadBook() {
   if (!bookStore.currentBook || !leftCanvasRef.value || !rightCanvasRef.value) return
   
@@ -35,7 +38,7 @@ async function loadBook() {
     pdfDoc.value = await loadPDFDocument(bookStore.currentBook.filePath)
     currentPage.value = bookStore.currentBook.currentPage
     await renderSpread()
-    startPrefetch()
+    await startPrefetch()
   } catch (error) {
     console.error('Failed to load PDF:', error)
   }
@@ -59,18 +62,22 @@ async function flipPage(direction: 'left' | 'right') {
   }
 }
 
-function handlePageChange(newPage: number) {
+async function handlePageChange(newPage: number) {
   currentPage.value = newPage
-  renderSpread()
-  startPrefetch()
+  bookStore.updateCurrentPage(newPage)
+  await renderSpread()
+  await startPrefetch()
 }
 
-function handleFlipStart() {
+function handleFlipStart(direction: 'left' | 'right') {
   isFlipping.value = true
+  const backPage = direction === 'right' ? currentPage.value + 2 : currentPage.value - 1
+  flipBackImage.value = getPagePreview(backPage)
 }
 
 function handleFlipEnd() {
   isFlipping.value = false
+  flipBackImage.value = null
 }
 
 function goToPage(pageNumber: number) {
@@ -79,6 +86,7 @@ function goToPage(pageNumber: number) {
   currentPage.value = Math.max(1, Math.min(pageNumber, maxPage - 1))
   bookStore.updateCurrentPage(currentPage.value)
   renderSpread()
+  startPrefetch()
 }
 
 function handleReturnToHeldPage() {
@@ -144,31 +152,24 @@ function handleReleaseHold() {
   bookStore.releaseHold()
 }
 
-function startPrefetch() {
+async function startPrefetch() {
   if (!bookStore.currentBook || !pdfDoc.value) return
-  
+
   readerStore.setPrefetchingState(true)
-  
-  const pagesToPrefetch: number[] = []
-  for (let i = -3; i <= 3; i++) {
-    const pageNum = currentPage.value + i
-    if (pageNum >= 1 && pageNum <= pdfDoc.value.numPages && pageNum !== currentPage.value) {
-      pagesToPrefetch.push(pageNum)
-    }
-  }
-  
-  Promise.all(
-    pagesToPrefetch.map(async (pageNum) => {
-      try {
-        const thumbnail = await renderPageAsImage(pdfDoc.value, pageNum, 0.2)
-        readerStore.cacheThumbnail(pageNum, thumbnail)
-      } catch (error) {
-        console.error(`Failed to prefetch page ${pageNum}:`, error)
-      }
+
+  try {
+    const prefetched = await prefetchNearbyPages(pdfDoc.value, {
+      currentPage: currentPage.value,
+      totalPages: pdfDoc.value.numPages,
+      range: 4,
+      scale: 0.22
     })
-  ).finally(() => {
+
+    readerStore.cacheThumbnails(prefetched)
+    readerStore.prunePrefetchCache(currentPage.value, 4)
+  } finally {
     readerStore.setPrefetchingState(false)
-  })
+  }
 }
 
 function initWorker() {
@@ -186,6 +187,13 @@ function initWorker() {
   
   thumbnailWorker.onerror = (error) => {
     console.error('Worker error:', error)
+  }
+}
+
+function handleGoToPageEvent(e: Event) {
+  const event = e as CustomEvent<number>
+  if (typeof event.detail === 'number') {
+    goToPage(event.detail)
   }
 }
 
@@ -209,12 +217,14 @@ onMounted(() => {
   loadBook()
   window.addEventListener('return-to-held-page', handleReturnToHeldPage)
   window.addEventListener('keydown', handleKeydown)
+  window.addEventListener('go-to-page', handleGoToPageEvent as EventListener)
   initWorker()
 })
 
 onUnmounted(() => {
   window.removeEventListener('return-to-held-page', handleReturnToHeldPage)
   window.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('go-to-page', handleGoToPageEvent as EventListener)
   if (thumbnailWorker) {
     thumbnailWorker.terminate()
   }
@@ -259,11 +269,15 @@ defineExpose({
       </template>
       
       <template #flip-page-back="{ page, mirrored }">
-        <div 
-          class="w-full h-full flex items-center justify-center bg-paper-50"
-          :style="{ transform: mirrored ? 'scaleX(-1)' : 'none' }"
-        >
-          <span class="text-gray-400 text-sm">Page {{ page }}</span>
+        <div class="w-full h-full flex items-center justify-center bg-paper-50">
+          <img
+            v-if="flipBackImage"
+            :src="flipBackImage"
+            :alt="`Page ${page} preview`"
+            class="prefetched-preview"
+            :style="{ transform: mirrored ? 'scaleX(-1)' : 'none' }"
+          />
+          <span v-else class="text-gray-400 text-sm">Page {{ page }}</span>
         </div>
       </template>
     </PageFlip>
@@ -274,6 +288,12 @@ defineExpose({
 .page-canvas {
   width: 50vh;
   height: 70vh;
+  object-fit: contain;
+}
+
+.prefetched-preview {
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
 </style>
