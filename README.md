@@ -82,13 +82,21 @@ sudo dnf install -y \
   librsvg2-devel
 
 # Arch Linux
+# 推荐（Tauri v2 / 新环境）
 sudo pacman -S --needed \
-  webkit2gtk \
+  base-devel \
+  glib2 \
+  pkgconf \
+  webkit2gtk-4.1 \
   gtk3 \
-  javascriptcoregtk-4.0 \
-  libsoup2.4 \
-  libappindicator-gtk3 \
+  libsoup3 \
+  cairo \
+  pango \
+  gdk-pixbuf2 \
   librsvg
+
+# 兼容老依赖名称（如果你的环境仍使用 4.0 / libsoup2）
+# sudo pacman -S --needed webkit2gtk gtk3 javascriptcoregtk-4.0 libsoup2.4
 ```
 
 4. **Install Node.js Dependencies**
